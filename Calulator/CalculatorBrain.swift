@@ -13,10 +13,23 @@ class CalculatorBrain {
 	private var knownOps = [String : Op]() // or Dictionary<String, Ops>()
 	private var opStack = [Op]() // or Array<Op>()
 	
-	private enum Op {
+	private enum Op : Printable {
 		case Operand(Double)
 		case UnaryOperation(String, Double -> Double)
 		case BinaryOperation(String, (Double, Double) -> Double)
+		
+		var description: String {
+			get {
+				switch self {
+				case .Operand(let operand):
+					return "\(operand)"
+				case .UnaryOperation(let operation, _):
+					return operation
+				case .BinaryOperation(let operation, _):
+					return operation
+				}
+			}
+		}
 	}
 	
 	init() {
@@ -25,16 +38,20 @@ class CalculatorBrain {
 		knownOps["+"] = Op.BinaryOperation("+", +)
 		knownOps["-"] = Op.BinaryOperation("-") {$1 - $0}
 		knownOps["√"] = Op.UnaryOperation("√", sqrt)
+		knownOps["sin"] = Op.UnaryOperation("sin", sin)
+		knownOps["cos"] = Op.UnaryOperation("cos", cos)
  	}
 	
-	func pushOperand(operand: Double) {
+	func pushOperand(operand: Double) -> Double? {
 		opStack.append(Op.Operand(operand))
+		return evaluate()
 	}
 	
-	func performOperation(symbol: String) {
+	func performOperation(symbol: String) -> Double? {
 		if let operation = knownOps[symbol] {
 			opStack.append(operation)
 		}
+		return evaluate()
 	}
 	
 	private func evaluate(ops: [Op]) -> (result: Double?, remainingOps: [Op]) {
@@ -52,9 +69,9 @@ class CalculatorBrain {
 			case .BinaryOperation(_, let operation):
 				let op1Evaluation = evaluate(remainingOps)
 				if let operand1 = op1Evaluation.result {
-					let op2Evaluation = evaluate(remainingOps)
+					let op2Evaluation = evaluate(op1Evaluation.remainingOps)
 					if let operand2 = op2Evaluation.result {
-						return (operation(operand1, operand2), remainingOps)
+						return (operation(operand1, operand2), op2Evaluation.remainingOps)
 					}
 				}
 			}
@@ -63,7 +80,8 @@ class CalculatorBrain {
 	}
 	
 	func evaluate() -> Double? {
-		let (result, _) = evaluate(opStack)
+		let (result, remainder) = evaluate(opStack)
+		println("\(opStack) = \(result) with the \(remainder) left over")
 		return result
 	}
 }
